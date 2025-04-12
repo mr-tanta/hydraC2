@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hydra C2 - Login</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body {
+            height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background-color: #f5f5f5;
+        }
+        .login-form {
+            width: 100%;
+            max-width: 330px;
+            padding: 15px;
+            margin: auto;
+        }
+        .login-form .form-floating:focus-within {
+            z-index: 2;
+        }
+        .login-form input[type="text"] {
+            margin-bottom: -1px;
+            border-bottom-right-radius: 0;
+            border-bottom-left-radius: 0;
+        }
+        .login-form input[type="password"] {
+            margin-bottom: 10px;
+            border-top-left-radius: 0;
+            border-top-right-radius: 0;
+        }
+    </style>
+</head>
+<body class="text-center">
+    <main class="login-form">
+        <form id="loginForm">
+            <h1 class="h3 mb-3 fw-normal">Hydra C2</h1>
+            <div class="form-floating">
+                <input type="text" class="form-control" id="username" placeholder="Username" required>
+                <label for="username">Username</label>
+            </div>
+            <div class="form-floating">
+                <input type="password" class="form-control" id="password" placeholder="Password" required>
+                <label for="password">Password</label>
+            </div>
+            <div id="error-message" class="alert alert-danger d-none" role="alert"></div>
+            <button class="w-100 btn btn-lg btn-primary" type="submit">Sign in</button>
+        </form>
+    </main>
+
+    <script>
+        // Check if already logged in
+        document.addEventListener('DOMContentLoaded', function() {
+            const token = localStorage.getItem('token');
+            if (token) {
+                // Verify token validity
+                fetch('/api/clients', {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                }).then(response => {
+                    if (response.ok) {
+                        window.location.href = '/';
+                    } else {
+                        localStorage.removeItem('token');
+                    }
+                }).catch(() => {
+                    localStorage.removeItem('token');
+                });
+            }
+        });
+
+        document.getElementById('loginForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+            const errorMessage = document.getElementById('error-message');
+            
+            try {
+                const response = await fetch('/token', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                    },
+                    body: `username=${encodeURIComponent(username)}&password=${encodeURIComponent(password)}`
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    // Store the token
+                    localStorage.setItem('token', data.access_token);
+                    
+                    // Verify token works before redirecting
+                    const verifyResponse = await fetch('/api/clients', {
+                        headers: {
+                            'Authorization': `Bearer ${data.access_token}`
+                        }
+                    });
+                    
+                    if (verifyResponse.ok) {
+                        // Go to dashboard but bypass the root route
+                        localStorage.setItem('token', data.access_token);
+                        console.log("Token validated successfully:", data.access_token.substring(0, 20) + "...");
+                        window.location.href = '/';
+                    } else {
+                        throw new Error('Token verification failed');
+                    }
+                } else {
+                    const error = await response.json();
+                    errorMessage.textContent = error.detail || 'Invalid username or password';
+                    errorMessage.classList.remove('d-none');
+                }
+            } catch (error) {
+                console.error('Login error:', error);
+                errorMessage.textContent = 'An error occurred. Please try again.';
+                errorMessage.classList.remove('d-none');
+            }
+        });
+    </script>
+</body>
+</html> 
