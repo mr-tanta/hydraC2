@@ -5,6 +5,44 @@
     align-items: stretch;
 }
 
+/* Connection Indicator */
+.connection-indicator {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    display: inline-block;
+    background-color: #ccc; /* Default gray */
+    margin-right: 8px;
+    position: relative;
+}
+
+.connection-indicator.connected {
+    background-color: #28a745; /* Green */
+}
+
+.connection-indicator.disconnected {
+    background-color: #dc3545; /* Red */
+}
+
+.connection-indicator.connecting,
+.connection-indicator.reconnecting {
+    background-color: #ffc107; /* Yellow */
+    animation: pulse 1.5s infinite;
+}
+
+/* Pulsing animation for connecting state */
+@keyframes pulse {
+    0% {
+        opacity: 1;
+    }
+    50% {
+        opacity: 0.4;
+    }
+    100% {
+        opacity: 1;
+    }
+}
+
 #sidebar {
     min-width: 250px;
     max-width: 250px;
@@ -77,15 +115,78 @@
 
 /* Screen View */
 .screen-container {
-    background-color: #1e1e1e;
-    padding: 10px;
-    border-radius: 5px;
+    position: relative;
+    background-color: #f8f9fa;
+    border: 1px solid #ddd;
+    min-height: 300px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
     margin-bottom: 15px;
+}
+
+.screen-container .no-screenshot {
+    text-align: center;
+    color: #6c757d;
+    padding: 20px;
 }
 
 .screen-container img {
     max-width: 100%;
-    height: auto;
+    max-height: 100%;
+}
+
+/* Control active state */
+.control-active {
+    border: 2px solid #ffc107 !important;
+    box-shadow: 0 0 8px rgba(255, 193, 7, 0.5);
+}
+
+/* Style for the remote control button group */
+.remote-control-buttons {
+    margin-top: 10px;
+    margin-bottom: 15px;
+}
+
+/* Ensure buttons have consistent spacing */
+.btn-group .btn {
+    margin-right: 0;
+}
+
+/* Style for screen when no screenshot available */
+#screen-capture.d-none + .no-screenshot {
+    display: block;
+    color: #999;
+    font-style: italic;
+    padding: 80px 0;
+    text-align: center;
+}
+
+.no-screenshot {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 300px;
+    color: #999;
+    font-style: italic;
+}
+
+/* Progress bars */
+.progress {
+    height: 0.75rem;
+    border-radius: 0.25rem;
+    margin-top: 0.25rem;
+}
+
+/* Card styling */
+.card-header h5 {
+    margin-bottom: 0;
+}
+
+/* Selected implant header */
+#selected-implant-header {
+    font-weight: 500;
+    padding: 0.5rem 1rem;
 }
 
 /* Console Window */
@@ -246,4 +347,61 @@ body.dark-theme .form-control:focus {
 
 .modal-footer {
     border-top: 1px solid rgba(0, 0, 0, 0.125);
+}
+
+/* Connection warning styles */
+.connection-warning {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    text-align: center;
+    z-index: 100;
+    margin: 0;
+    border-radius: 0;
+    opacity: 0.9;
+}
+
+/* Add a slight animation to draw attention */
+.connection-warning {
+    animation: warning-fade-in 0.5s ease-in-out;
+}
+
+@keyframes warning-fade-in {
+    from { opacity: 0; transform: translateY(-10px); }
+    to { opacity: 0.9; transform: translateY(0); }
+}
+
+/* Notification cleanup - limit number visible at once */
+#alerts-container {
+    max-height: 50vh;
+    overflow-y: auto;
+    z-index: 9999;
+}
+
+#alerts-container .alert {
+    margin-bottom: 0.5rem;
+    padding: 0.5rem 1rem;
+    font-size: 0.9rem;
+    opacity: 0.95;
+    transition: opacity 0.3s, transform 0.3s;
+}
+
+/* Collapse multiple notifications of the same type */
+#alerts-container .alert + .alert {
+    margin-top: -0.25rem;
+}
+
+#alerts-container .alert-success + .alert-success,
+#alerts-container .alert-danger + .alert-danger,
+#alerts-container .alert-warning + .alert-warning,
+#alerts-container .alert-info + .alert-info {
+    opacity: 0.5;
+    transform: scale(0.97);
+}
+
+/* Hover effect to see details */
+#alerts-container .alert:hover {
+    opacity: 1;
+    transform: scale(1);
 } 

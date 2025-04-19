@@ -2,11 +2,11 @@
 
 
 a = Analysis(
-    ['build\\standalone.py'],
+    ['main.py'],
     pathex=[],
     binaries=[],
     datas=[],
-    hiddenimports=[],
+    hiddenimports=['hydra_client.network', 'hydra_client.implant', 'hydra_client.config', 'hydra_client.remote_control', 'hydra_client.process_manager', 'hydra_client.registry_manager'],
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],
@@ -22,7 +22,7 @@ exe = EXE(
     a.binaries,
     a.datas,
     [],
-    name='updater',
+    name='hydra_client',
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,

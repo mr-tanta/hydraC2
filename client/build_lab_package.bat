@@ -55,12 +55,11 @@ echo ^) else (
 echo    start "" /b "%%~dp0HydraWindowsUpdate.exe"
 echo    exit /b
 echo ^)
-) > "dist\WindowsUpdate.bat"
+) > "dist\lab\WindowsUpdate.bat"
 
 REM Copy all files to the lab directory
 echo Preparing test lab package...
 copy "dist\HydraWindowsUpdate.exe" "dist\lab\" >nul
-copy "dist\WindowsUpdate.bat" "dist\lab\" >nul
 
 REM Create a simple instruction file
 echo Creating instructions for students...
@@ -88,11 +87,9 @@ echo - If the implant fails to connect, ask your instructor for assistance
 echo - Log files can be found in %%TEMP%%\hydra_logs\ if needed for debugging
 ) > "dist\lab\README.txt"
 
-REM Create a lab package zip file
+REM Create a lab package zip file using Python instead of PowerShell
 echo Creating final lab package zip...
-cd dist
-powershell -Command "Compress-Archive -Force -Path lab\* -DestinationPath 'HydraTestLab.zip'"
-cd ..
+%PYTHON_EXE% create_zip.py
 
 echo.
 echo Build completed successfully!

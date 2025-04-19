@@ -92,4 +92,32 @@ document.addEventListener('DOMContentLoaded', function() {
     popoverTriggerList.map(function(popoverTriggerEl) {
         return new bootstrap.Popover(popoverTriggerEl);
     });
+});
+
+// Initialize WebSocketManager
+document.addEventListener('DOMContentLoaded', () => {
+    // Initialize WebSocketManager
+    WebSocketManager.init();
+    
+    // Initialize Dashboard modules
+    dashboard.init();
+    
+    // Initialize ImplantsModule with the websocket
+    if (window.ImplantsModule) {
+        ImplantsModule.init(WebSocketManager.socket);
+    }
+    
+    // Initialize RemoteControlModule with the websocket
+    if (window.RemoteControlModule) {
+        RemoteControlModule.init(WebSocketManager.socket);
+    }
+    
+    // Setup navigation
+    setupNavigation();
+    
+    // Set theme from localStorage
+    const savedTheme = localStorage.getItem('theme');
+    if (savedTheme) {
+        setTheme(savedTheme);
+    }
 }); 
